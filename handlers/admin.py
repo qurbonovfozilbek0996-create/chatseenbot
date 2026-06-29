@@ -9,7 +9,7 @@ from database.db import (
     get_payment_count, get_total_revenue, get_setting, set_setting,
     get_admins, add_admin, remove_admin, is_admin,
     get_payment_methods, add_payment_method, delete_payment_method,
-    get_categories, get_category, add_category, update_category,
+    get_categories, get_category, add_category,
     delete_category, toggle_category,
     get_subcategories, get_subcategory, add_subcategory, delete_subcategory,
     get_service, add_service, delete_service, toggle_service,
@@ -22,7 +22,7 @@ from utils.keyboards import (
     admin_menu_kb, admin_settings_kb, base_settings_kb,
     admins_manage_kb, wallets_kb, api_settings_kb, design_kb,
     admin_category_actions_kb, admin_subcategory_actions_kb,
-    user_manage_kb, cancel_kb, main_menu_kb, payment_confirm_kb
+    user_manage_kb, cancel_kb, main_menu_kb
 )
 from utils.api import get_api_balance, get_api_services
 from config import ADMIN_IDS
@@ -47,14 +47,12 @@ class AdminState(StatesGroup):
     set_api_url = State()
     set_api_key = State()
     set_design_val = State()
-    set_design_key = State()
     add_cat_name = State()
     add_cat_emoji = State()
     add_sub_name = State()
     add_sub_emoji = State()
-    add_sub_cat_id = State()
     add_srv_api_id = State()
-    add_srv_parent = State()
+    add_srv_name = State()
     add_promo_code = State()
     add_promo_amount = State()
     add_promo_uses = State()
@@ -65,7 +63,6 @@ class AdminState(StatesGroup):
     user_search = State()
     add_balance_amount = State()
 
-# ============ ASOSIY ============
 @router.message(AdminFilter(), F.text == "◀️ Orqaga")
 async def back_to_main(message: Message, state: FSMContext):
     await state.clear()
@@ -98,9 +95,7 @@ async def adm_back(callback: CallbackQuery):
 @router.callback_query(AdminFilter(), F.data == "cancel")
 async def admin_cancel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.edit_text("❌ Bekor qilindi.")
-# ============ BIRLAMCHI SOZLAMALAR ============
-@router.callback_query(AdminFilter(), F.data == "adm:base_settings")
+    await callback.message.edit_text("❌ Bekor qilindi.")@router.callback_query(AdminFilter(), F.data == "adm:base_settings")
 async def adm_base_settings(callback: CallbackQuery):
     currency = await get_setting('currency') or 'UZS'
     vip = await get_setting('vip_price') or '15000'
@@ -124,7 +119,7 @@ async def adm_set_currency(callback: CallbackQuery, state: FSMContext):
 async def got_currency(message: Message, state: FSMContext):
     await set_setting('currency', message.text.strip().upper())
     await state.clear()
-    await message.answer(f"✅ Valyuta {message.text.strip().upper()} ga o'zgartirildi!")
+    await message.answer(f"✅ Valyuta o'zgartirildi!")
 
 @router.callback_query(AdminFilter(), F.data == "adm:vip_price")
 async def adm_vip_price(callback: CallbackQuery, state: FSMContext):
@@ -171,7 +166,6 @@ async def got_transfer_fee(message: Message, state: FSMContext):
     except:
         await message.answer("❌ Raqam kiriting!")
 
-# ============ ADMINLAR ============
 @router.callback_query(AdminFilter(), F.data == "adm:admins")
 async def adm_admins(callback: CallbackQuery):
     await callback.message.edit_text(
@@ -222,7 +216,8 @@ async def got_del_admin(message: Message, state: FSMContext):
         await state.clear()
         await message.answer(f"✅ {target_id} o'chirildi!")
     except:
-        await message.answer("❌ To'g'ri ID kiriting!")# ============ HAMYONLAR ============
+        await message.answer("❌ To'g'ri ID kiriting!")
+
 @router.callback_query(AdminFilter(), F.data == "adm:wallets")
 async def adm_wallets(callback: CallbackQuery):
     await callback.message.edit_text(
@@ -245,7 +240,7 @@ async def got_wallet_name(message: Message, state: FSMContext):
 async def got_wallet_emoji(message: Message, state: FSMContext):
     await state.update_data(wallet_emoji=message.text.strip())
     await state.set_state(AdminState.add_wallet_details)
-    await message.answer("Rekvizit kiriting (karta raqami yoki username):")
+    await message.answer("Rekvizit kiriting:")
 
 @router.message(AdminFilter(), AdminState.add_wallet_details)
 async def got_wallet_details(message: Message, state: FSMContext):
@@ -272,7 +267,7 @@ async def adm_wallet_list(callback: CallbackQuery):
         )])
     buttons.append([InlineKeyboardButton(text="◀️ Orqaga", callback_data="adm:wallets")])
     await callback.message.edit_text(
-        "💳 Hamyonlar (o'chirish uchun bosing):",
+        "💳 Hamyonlar:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
     )
 
@@ -283,7 +278,6 @@ async def adm_delete_wallet(callback: CallbackQuery):
     await callback.answer("✅ O'chirildi!")
     await adm_wallet_list(callback)
 
-# ============ API ============
 @router.callback_query(AdminFilter(), F.data == "adm:api")
 async def adm_api(callback: CallbackQuery):
     api_url = await get_setting('api_url') or ''
@@ -294,11 +288,9 @@ async def adm_api(callback: CallbackQuery):
         balance_text = str(bal) if not err else f"Xato: {err}"
     text = (
         f"🔑 <b>API ma'lumotlari:</b>\n"
-        f"{'─'*20}\n"
-        f"API havola: {api_url or 'kiritilmagan'}\n\n"
-        f"API kalit: {'✅ Kiritilgan' if api_key else 'kiritilmagan'}\n\n"
-        f"API balans: {balance_text}\n"
-        f"{'─'*20}"
+        f"API havola: {api_url or 'kiritilmagan'}\n"
+        f"API kalit: {'✅ Kiritilgan' if api_key else 'kiritilmagan'}\n"
+        f"API balans: {balance_text}"
     )
     await callback.message.edit_text(
         text, parse_mode="HTML",
@@ -340,7 +332,6 @@ async def adm_del_api(callback: CallbackQuery):
     await callback.answer("✅ API o'chirildi!")
     await adm_api(callback)
 
-# ============ DIZAYN ============
 @router.callback_query(AdminFilter(), F.data == "adm:design")
 async def adm_design(callback: CallbackQuery):
     cat_row = await get_setting('categories_per_row') or '2'
@@ -383,8 +374,7 @@ async def got_design_val(message: Message, state: FSMContext):
         await state.clear()
         await message.answer(f"✅ O'zgartirildi: {val}")
     except:
-        await message.answer("❌ 1-5 orasidagi raqam kiriting!")# ============ STATISTIKA ============
-@router.message(AdminFilter(), F.text == "📊 Statistika")
+        await message.answer("❌ 1-5 orasidagi raqam kiriting!")@router.message(AdminFilter(), F.text == "📊 Statistika")
 async def admin_stats(message: Message):
     users = await get_user_count()
     orders = await get_order_count()
@@ -400,7 +390,6 @@ async def admin_stats(message: Message):
         parse_mode="HTML"
     )
 
-# ============ XIZMATLAR ============
 @router.message(AdminFilter(), F.text == "🛍 Xizmatlar")
 async def admin_services(message: Message):
     cats = await get_categories(active_only=False)
@@ -448,7 +437,7 @@ async def got_cat_name(message: Message, state: FSMContext):
 @router.message(AdminFilter(), AdminState.add_cat_emoji)
 async def got_cat_emoji(message: Message, state: FSMContext):
     data = await state.get_data()
-    cat_id = await add_category(data['cat_name'], message.text.strip())
+    await add_category(data['cat_name'], message.text.strip())
     await state.clear()
     await message.answer(f"✅ '{data['cat_name']}' bo'limi qo'shildi!")
 
@@ -511,11 +500,15 @@ async def adm_add_sub(callback: CallbackQuery, state: FSMContext):
 async def got_sub_name(message: Message, state: FSMContext):
     await state.update_data(sub_name=message.text.strip())
     await state.set_state(AdminState.add_sub_emoji)
-    await message.answer("Emoji kiriting:")
+    await message.answer("Emoji kiriting (masalan: 📂):")
 
 @router.message(AdminFilter(), AdminState.add_sub_emoji)
 async def got_sub_emoji(message: Message, state: FSMContext):
     data = await state.get_data()
+    if not data.get('sub_cat_id'):
+        await message.answer("❌ Xato! Qaytadan urining.")
+        await state.clear()
+        return
     await add_subcategory(data['sub_cat_id'], data['sub_name'], message.text.strip())
     await state.clear()
     await message.answer(f"✅ '{data['sub_name']}' ichki bo'limi qo'shildi!")
@@ -583,11 +576,11 @@ async def got_srv_api_id(message: Message, state: FSMContext):
         )
     else:
         await state.update_data(api_service_id=api_id)
-        await state.set_state(AdminState.add_srv_parent)
+        await state.set_state(AdminState.add_srv_name)
         await message.answer("⚠️ API dan topilmadi. Xizmat nomini kiriting:")
 
-@router.message(AdminFilter(), AdminState.add_srv_parent)
-async def got_srv_name_manual(message: Message, state: FSMContext):
+@router.message(AdminFilter(), AdminState.add_srv_name)
+async def got_srv_name(message: Message, state: FSMContext):
     data = await state.get_data()
     if data['srv_parent_type'] == 'sub':
         await add_service(data['api_service_id'], message.text.strip(), 0, 10, 10000,
@@ -598,7 +591,6 @@ async def got_srv_name_manual(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("✅ Xizmat qo'shildi!")
 
-# ============ FOYDALANUVCHI ============
 @router.message(AdminFilter(), F.text == "🔍 Foydalanuvchini boshqarish")
 async def admin_user_manage(message: Message, state: FSMContext):
     await state.set_state(AdminState.user_search)
@@ -679,7 +671,6 @@ async def got_add_balance(message: Message, state: FSMContext):
     except:
         await message.answer("❌ Raqam kiriting!")
 
-# ============ KANALLAR ============
 @router.message(AdminFilter(), F.text == "📢 Kanallar")
 async def admin_channels(message: Message):
     channels = await get_channels()
@@ -730,7 +721,6 @@ async def del_ch(callback: CallbackQuery):
     await callback.answer("✅ O'chirildi!")
     await callback.message.edit_text("✅ Kanal o'chirildi.")
 
-# ============ PROMOKOD ============
 @router.message(AdminFilter(), F.text == "🎟 Promokod")
 async def admin_promo(message: Message):
     promos = await get_all_promos()
@@ -793,7 +783,6 @@ async def adm_del_promo(callback: CallbackQuery):
     await callback.answer("✅ O'chirildi!")
     await callback.message.edit_text("✅ Promokod o'chirildi.")
 
-# ============ XABARNOMA ============
 @router.message(AdminFilter(), F.text == "📨 Xabarnoma")
 async def admin_broadcast(message: Message, state: FSMContext):
     await state.set_state(AdminState.broadcast_text)
@@ -814,7 +803,6 @@ async def broadcast_send(message: Message, state: FSMContext):
             failed += 1
     await message.answer(f"✅ Yuborildi!\n✅ {sent} ta\n❌ {failed} ta xato")
 
-# ============ BOT ON/OFF ============
 @router.message(AdminFilter(), F.text == "🔄 Botni o'chir/yoq")
 async def admin_toggle_bot(message: Message):
     current = await get_setting('bot_active') or '1'
